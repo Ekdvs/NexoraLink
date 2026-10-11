@@ -33,6 +33,8 @@ model User {
   status        UserStatus @default(INACTIVE)
   emailVerified Boolean    @default(false)
   emailVerificationTokens EmailVerificationToken[]
+  refreshTokens  String[]   @default([])
+  lastLoginAt     DateTime?
 }
 
 model EmailVerificationToken {

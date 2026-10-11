@@ -48,3 +48,23 @@ export const registerSchema = z.object(
 );
 
 export type RegisterSchema = z.infer<typeof registerSchema>;
+
+export const loginSchema = z.object({
+    email: z
+        .string()
+        .email("Invalid email address")
+        .min(1, "Email is required")
+        .trim()
+        .toLowerCase()
+        .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email address"),
+    password: z
+        .string()
+        .min(1, "Password is required")
+        .max(128, "Password is too long")
+        .refine(
+            (password) => !/\s/.test(password),
+            "Password must not contain spaces",
+        ),
+});
+
+export type LoginSchema = z.infer<typeof loginSchema>;
