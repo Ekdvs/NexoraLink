@@ -11,3 +11,109 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+
+enum SessionStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  ENDED
+  FAILED
+}
+
+model User {
+  id           String          @id @default(uuid())
+  email        String          @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime        @default(now())
+  devices      Device[]
+  sessions     RemoteSession[] @relation("Requester")
+  auditLogs    AuditLog[]
+  status        UserStatus @default(INACTIVE)
+  emailVerified Boolean    @default(false)
+  emailVerificationTokens EmailVerificationToken[]
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  
+}
+
+model Device {
+  id          String             @id @default(uuid())
+  deviceCode  String             @unique
+  name        String
+  platform    String
+  ownerId     String
+  owner       User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  lastSeenAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime           @default(now())
+  credentials DeviceCredential[]
+  hosted      RemoteSession[]    @relation("Host")
+
+  @@index([ownerId])
+}
+
+model DeviceCredential {
+  id        String    @id @default(uuid())
+  deviceId  String
+  device    Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+}
+
+model RemoteSession {
+  id           String             @id @default(uuid())
+  requesterId  String
+  requester    User               @relation("Requester", fields: [requesterId], references: [id])
+  hostDeviceId String
+  hostDevice   Device             @relation("Host", fields: [hostDeviceId], references: [id])
+  status       SessionStatus      @default(PENDING)
+  startedAt    DateTime?
+  endedAt      DateTime?
+  createdAt    DateTime           @default(now())
+  permission   SessionPermission?
+
+  @@index([requesterId])
+  @@index([hostDeviceId])
+}
+
+model SessionPermission {
+  id               String        @id @default(cuid())
+  sessionId        String        @unique
+  session          RemoteSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  canView          Boolean       @default(true)
+  canControl       Boolean       @default(false)
+  canTransferFiles Boolean       @default(false)
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  deviceId  String?
+  action    String
+  metadata  Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
